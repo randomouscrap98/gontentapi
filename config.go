@@ -16,6 +16,7 @@ type Config struct {
 	Database     string         // Path to the contentapi database file
 	Uploads      string         // Path to all the uploaded files
 	Templates    string         // Path to all the templates
+	RootPath     string         // The root path to our service (the url path)
 }
 
 func GetDefaultConfig_Toml() string {
@@ -28,6 +29,7 @@ Timeout="30s"                 # How long a connection is allowed to last
 Database="data/content.db"    # Path to the contentapi database file
 Uploads="data/uploads"        # Path to the contentapi uploads (images)
 Templates="static/templates"  # Path to all the templates
+RootPath="/"                  # Root path for our service. Useful when running behind a reverse proxy
 `
 	return fmt.Sprintf(
 		baseConfig,
