@@ -35,6 +35,7 @@
   <input type="submit" value="Login">
 </form>
 {{else}}
+<img src="{{UploadUrl .user.Avatar}}" class="avatar">
 <form method="POST" action="{{.root}}/logout">
   <input type="hidden" name="return" value="{{.requestUri}}">
   <input type="submit" value="Logout - {{.user.Username}} [{{.user.Uid}}]">

@@ -55,8 +55,9 @@ func NewContext(config *Config) (*GonContext, error) {
 	// We initialize the templates first because we don't really need
 	// hot reloading (also it's just better for performance... though memory usage...
 	templates, err := template.New("alltemplates").Funcs(template.FuncMap{
-		"RawHtml": func(c string) template.HTML { return template.HTML(c) },
-		"RawUrl":  func(c string) template.URL { return template.URL(c) },
+		"RawHtml":   func(c string) template.HTML { return template.HTML(c) },
+		"RawUrl":    func(c string) template.URL { return template.URL(c) },
+		"UploadUrl": func(c string) string { return fmt.Sprintf("%s/uploads/%s", config.RootPath, c) },
 	}).ParseGlob(filepath.Join(config.Templates, "*.tmpl"))
 
 	if err != nil {

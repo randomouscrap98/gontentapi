@@ -116,9 +116,7 @@ func main() {
 	// log.Printf("Mounted '%s' at %s", service.GetIdentifier(), k)
 
 	// --- Static files -----
-	err = utils.FileServer(r, "/static", config.StaticFiles, true)
-	must(err)
-	log.Printf("Hosting static files at %s\n", config.StaticFiles)
+	//must(err)
 
 	// --- Server ---
 	s := runServer(r, config)

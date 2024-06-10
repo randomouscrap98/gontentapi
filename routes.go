@@ -1,9 +1,9 @@
 package main
 
 import (
-	//"log"
 	"fmt"
 	"github.com/google/uuid"
+	"log"
 	"net/http"
 	"time"
 
@@ -26,6 +26,7 @@ func handleError(err error, w http.ResponseWriter) bool {
 }
 
 func SetupRoutes(r *chi.Mux, gctx *GonContext) error {
+	// --- Normal routes ---
 	r.Get("/", func(w http.ResponseWriter, r *http.Request) {
 		data := gctx.GetDefaultData(r)
 		gctx.RunTemplate("index.tmpl", w, data)
@@ -59,6 +60,17 @@ func SetupRoutes(r *chi.Mux, gctx *GonContext) error {
 		utils.DeleteCookie(gctx.config.LoginCookie, w)
 		http.Redirect(w, r, returnUrl, http.StatusSeeOther)
 	})
+	// --- Static files ---
 	utils.AngryRobots(r)
+	err := utils.FileServer(r, "/static", gctx.config.StaticFiles, true)
+	if err != nil {
+		return err
+	}
+	log.Printf("Hosting static files at %s\n", gctx.config.StaticFiles)
+	err = utils.FileServer(r, "/uploads", gctx.config.Uploads, false)
+	if err != nil {
+		return err
+	}
+	log.Printf("Hosting uploads at %s\n", gctx.config.StaticFiles)
 	return nil
 }
