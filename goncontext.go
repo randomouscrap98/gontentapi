@@ -25,10 +25,16 @@ const (
 	Version     = "0.1"
 )
 
+type UserSession struct {
+	Uid      int64  // UID for user who signed in
+	Username string // Username for session
+}
+
 type GonContext struct {
 	config    *Config
 	decoder   *schema.Decoder
 	templates *template.Template
+	sessions  map[string]*UserSession
 	//chatlogIncludeRegex *regexp.Regexp
 	created time.Time
 	//drawDataMu          sync.Mutex
@@ -79,6 +85,7 @@ func (gctx *GonContext) GetDefaultData(r *http.Request) map[string]any {
 	result["runtimeInfo"] = rinfo
 	result["requestUri"] = r.URL.RequestURI()
 	result["cachebust"] = gctx.created.Format(time.RFC3339)
+	result["title"] = "Gontentapi"
 	//"RawHtml": func(c string) template.HTML { return template.HTML(c) },
 	return result
 }

@@ -1,0 +1,11 @@
+body {
+  padding: 0;
+  margin: 0;
+  font-family: sans-serif;
+}
+
+header {
+  background-color: #555;
+  margin-bottom: 0.5em;
+  padding: 0.1em;
+}

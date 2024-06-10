@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="rating" content="general">
+<meta name="description" content="Readonly contentapi.">
+<meta http-equiv="X-UA-Compatible" content="IE=edge" />
+<title>{{.title}}</title>
+
+<link rel="stylesheet" href="{{.root}}/static/index.css?{{.cachebust}}">
+
+<body>
+
+<header>
+{{if not .user.LoggedIn}}
+<form method="POST" action="{{.root}}/login">
+  <input name="username" placeholder="Username">
+  <input name="username" type="password" placeholder="Password">
+  <input type="submit" value="Login">
+</form>
+{{end}}
+</header>
+
+<h1>{{.title}}</h1>
+
+<section>
+<p>Hello world</p>
+</section>

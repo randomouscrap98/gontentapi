@@ -8,7 +8,7 @@ import (
 	"os"
 	"os/signal"
 	"slices"
-	"sync"
+	//"sync"
 	"syscall"
 	"time"
 
@@ -92,15 +92,22 @@ func main() {
 	log.Printf("Gontentapi server started\n")
 	config := initConfig()
 
+	gctx, err := NewContext(config)
+	must(err)
+
 	// Context is something we'll cancel to cancel any and all background tasks
 	// when the server gets a shutdown signal. This for some reason does not
 	// include the server itself...
-	_, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	// _, cancel := context.WithCancel(context.Background())
+	// defer cancel()
 
 	r := initRouter(config)
+	err = SetupRoutes(r, gctx)
+	must(err)
 
-	var wg sync.WaitGroup
+	// var wg sync.WaitGroup
+
+	//func (mctx *MakaiContext) GetHandler() (http.Handler, error) {
 
 	// --- Host all services ---
 	// r.Mount(k, handler)
@@ -109,10 +116,8 @@ func main() {
 	// log.Printf("Mounted '%s' at %s", service.GetIdentifier(), k)
 
 	// --- Static files -----
-	err := utils.FileServer(r, "/static", config.StaticFiles, true)
-	if err != nil {
-		panic(err)
-	}
+	err = utils.FileServer(r, "/static", config.StaticFiles, true)
+	must(err)
 	log.Printf("Hosting static files at %s\n", config.StaticFiles)
 
 	// --- Server ---
@@ -120,8 +125,8 @@ func main() {
 	waitForSigterm()
 
 	log.Println("Shutting down...")
-	cancel() // Cancel the context to signal goroutines to stop
-	wg.Wait()
+	//cancel() // Cancel the context to signal goroutines to stop
+	//wg.Wait()
 	log.Println("All background services stopped")
 
 	// Create a context with a timeout to allow for graceful shutdown
