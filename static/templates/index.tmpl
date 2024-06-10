@@ -17,8 +17,9 @@
 <header>
 {{if not .user.LoggedIn}}
 <form method="POST" action="{{.root}}/login">
-  <input name="username" placeholder="Username">
-  <input name="username" type="password" placeholder="Password">
+  <input type="text" name="username" placeholder="Username">
+  <input type="password" name="password" placeholder="Password">
+  <input type="hidden" name="return" value="{{.requestUri}}">
   <input type="submit" value="Login">
 </form>
 {{end}}
