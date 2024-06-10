@@ -19,3 +19,7 @@ header form {
 header form input {
   min-width: 3em;
 }
+
+header form input[type="submit"] {
+  flex: none;
+}
