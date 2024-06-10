@@ -2,14 +2,19 @@ package main
 
 import (
 	//"context"
+	//"os"
+	//"regexp"
+	//"sync"
+	"bytes"
+	"crypto/sha1"
+	"database/sql"
+	"encoding/base64"
 	"fmt"
+	"golang.org/x/crypto/pbkdf2"
 	"html/template"
 	"log"
 	"net/http"
-	//"os"
 	"path/filepath"
-	//"regexp"
-	//"sync"
 	"time"
 
 	"github.com/gorilla/schema"
@@ -28,6 +33,7 @@ const (
 type UserSession struct {
 	Uid      int64  // UID for user who signed in
 	Username string // Username for session
+	Avatar   string
 }
 
 type GonContext struct {
@@ -72,6 +78,7 @@ func NewContext(config *Config) (*GonContext, error) {
 		decoder:   decoder,
 		created:   time.Now(),
 		contentdb: contentdb,
+		sessions:  make(map[string]*UserSession),
 	}, nil
 }
 
@@ -86,6 +93,18 @@ func (gctx *GonContext) GetDefaultData(r *http.Request) map[string]any {
 	result["requestUri"] = r.URL.RequestURI()
 	result["cachebust"] = gctx.created.Format(time.RFC3339)
 	result["title"] = "Gontentapi"
+	cookie, err := r.Cookie(gctx.config.LoginCookie)
+	if err != nil {
+		if err != http.ErrNoCookie {
+			log.Printf("Cookie error: %s", err)
+		}
+	} else {
+		user, ok := gctx.sessions[cookie.Value]
+		if ok {
+			result["user"] = user
+			result["loggedin"] = true
+		}
+	}
 	//"RawHtml": func(c string) template.HTML { return template.HTML(c) },
 	return result
 }
@@ -96,5 +115,47 @@ func (gctx *GonContext) RunTemplate(name string, w http.ResponseWriter, data any
 	if err != nil {
 		log.Printf("ERROR: can't load template: %s", err)
 		http.Error(w, "Template load error (internal server error!)", http.StatusInternalServerError)
+	}
+}
+
+// Create hash in the same way old contentapi did it. useful for login
+func GetHash(password []byte, salt []byte) []byte {
+	const (
+		SaltBits       = 256
+		HashBits       = 512
+		HashIterations = 10000
+	)
+	return pbkdf2.Key(password, salt, HashIterations, HashBits/8, sha1.New)
+}
+
+func (gctx *GonContext) TestLogin(username string, password string) (*UserSession, error) {
+	var result UserSession
+	var passhashb64, saltb64 string
+	// Lookup user in database
+	err := gctx.contentdb.QueryRow("SELECT id,username,avatar,password,salt FROM users WHERE username = ?", username).Scan(
+		&result.Uid, &result.Username, &result.Avatar, &passhashb64, &saltb64)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			log.Printf("WARN: attempted login for non-existent user %s", username)
+			return nil, &utils.BadRequest{Message: "User not found!"}
+		} else {
+			return nil, err
+		}
+	}
+	// Compare hash
+	salt, err := base64.StdEncoding.DecodeString(saltb64)
+	if err != nil {
+		return nil, err
+	}
+	testhash := GetHash([]byte(password), salt)
+	passhash, err := base64.StdEncoding.DecodeString(passhashb64)
+	if err != nil {
+		return nil, err
+	}
+	if bytes.Equal(testhash, passhash) {
+		return &result, nil
+	} else {
+		log.Printf("WARN: password failure for user %s [%d]", username, result.Uid)
+		return nil, &utils.BadRequest{Message: "Password failure!"}
 	}
 }
