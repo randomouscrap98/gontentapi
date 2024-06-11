@@ -1,0 +1,13 @@
+- arthur requirement: path 
+- root page = special? mm probably doesn't need to be
+- pull page itself, need only a few bits of data
+- pull subpages
+- pull comments
+
+notes:
+- All page pulls (whether main or subpage) need to check permissions:
+  = where cid in select cid from permissions where uid in (0, uid) and read = true
+- easy to test
+- show lock symbol for private pages (both main and sub)
+- need to set markdown dataset on content div
+- need to set title

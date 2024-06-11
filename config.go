@@ -20,7 +20,6 @@ type Config struct {
 	LoginCookie  string         // Name of the login cookie
 	LoginExpire  utils.Duration // How long the login cookie lasts
 	MaxSessions  int            // How many total sessions can exist
-	//SessionTrim  float32        // How much to trim the sessions by when it gets too full
 }
 
 func GetDefaultConfig_Toml() string {
@@ -36,7 +35,6 @@ Templates="static/templates"   # Path to all the templates
 LoginCookie="gontentapi_login" # Name of login cookie
 LoginExpire="1500h"            # How long the login cookie lasts
 MaxSessions=10000              # How many total sessions can exist
-# SessionTrim=0.5                # How much to trim the sessions by when it gets too full
 
 # MUST set to empty path if hosted at root!
 RootPath=""                   # Root path for our service. Useful when running behind a reverse proxy
