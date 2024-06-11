@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"github.com/google/uuid"
 	"log"
 	"net/http"
 	"time"
@@ -41,12 +40,10 @@ func SetupRoutes(r *chi.Mux, gctx *GonContext) error {
 			return
 		}
 		// It's a new user, put them in the session
-		sessid_raw, err := uuid.NewRandom()
+		sessid, err := gctx.AddSession(user)
 		if handleError(err, w) {
 			return
 		}
-		sessid := sessid_raw.String()
-		gctx.sessions[sessid] = user
 		// Set the cookie
 		http.SetCookie(w, &http.Cookie{
 			Name:   gctx.config.LoginCookie,

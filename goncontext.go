@@ -4,7 +4,6 @@ import (
 	//"context"
 	//"os"
 	//"regexp"
-	//"sync"
 	"bytes"
 	"crypto/sha1"
 	"database/sql"
@@ -15,8 +14,10 @@ import (
 	"log"
 	"net/http"
 	"path/filepath"
+	"sync"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/gorilla/schema"
 	"github.com/jmoiron/sqlx"
 
@@ -34,13 +35,15 @@ type UserSession struct {
 	Uid      int64  // UID for user who signed in
 	Username string // Username for session
 	Avatar   string
+	Created  time.Time // When session was created
 }
 
 type GonContext struct {
-	config    *Config
-	decoder   *schema.Decoder
-	templates *template.Template
-	sessions  map[string]*UserSession
+	config      *Config
+	decoder     *schema.Decoder
+	templates   *template.Template
+	sessions    map[string]*UserSession
+	sessionLock sync.Mutex
 	//chatlogIncludeRegex *regexp.Regexp
 	created time.Time
 	//drawDataMu          sync.Mutex
@@ -83,6 +86,10 @@ func NewContext(config *Config) (*GonContext, error) {
 	}, nil
 }
 
+func (gctx *GonContext) IsExpired(user *UserSession) bool {
+	return time.Now().After(user.Created.Add(time.Duration(gctx.config.LoginExpire)))
+}
+
 // Retrieve the default data for any page load. Add your additional data to this
 // map before rendering
 func (gctx *GonContext) GetDefaultData(r *http.Request) map[string]any {
@@ -100,8 +107,10 @@ func (gctx *GonContext) GetDefaultData(r *http.Request) map[string]any {
 			log.Printf("Cookie error: %s", err)
 		}
 	} else {
+		gctx.sessionLock.Lock()
+		defer gctx.sessionLock.Unlock() // SHOULD be fine... don't do too much here anyway!
 		user, ok := gctx.sessions[cookie.Value]
-		if ok {
+		if ok && !gctx.IsExpired(user) {
 			result["user"] = user
 			result["loggedin"] = true
 		}
@@ -154,9 +163,40 @@ func (gctx *GonContext) TestLogin(username string, password string) (*UserSessio
 		return nil, err
 	}
 	if bytes.Equal(testhash, passhash) {
+		result.Created = time.Now()
 		return &result, nil
 	} else {
 		log.Printf("WARN: password failure for user %s [%d]", username, result.Uid)
 		return nil, &utils.BadRequest{Message: "Password failure!"}
 	}
+}
+
+// Attempt to add a new session, returning the generated sessionID. Threadsafe,
+// and removes old sessions when done
+func (gctx *GonContext) AddSession(user *UserSession) (string, error) {
+	// It's a new user, put them in the session
+	sessid_raw, err := uuid.NewRandom()
+	if err != nil { //handleError(err, w) {
+		return "", err
+	}
+	sessid := sessid_raw.String()
+	gctx.sessionLock.Lock()
+	defer gctx.sessionLock.Unlock()
+	// Remove old sessions (expired sessions)
+	removed := 0
+	for k, v := range gctx.sessions {
+		if gctx.IsExpired(v) {
+			delete(gctx.sessions, k)
+			removed += 1
+		}
+	}
+	if removed > 0 {
+		log.Printf("Removed %d old sessions", removed)
+	}
+	// If sessions is still too large, just reject it
+	if len(gctx.sessions) >= gctx.config.MaxSessions {
+		return "", fmt.Errorf("Too many sessions: %d", gctx.config.MaxSessions) // This is an unexpected error
+	}
+	gctx.sessions[sessid] = user
+	return sessid, nil
 }
