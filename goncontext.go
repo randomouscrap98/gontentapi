@@ -21,6 +21,7 @@ import (
 	"github.com/gorilla/schema"
 	"github.com/jmoiron/sqlx"
 
+	"github.com/randomouscrap98/gontentapi/contentapi"
 	"github.com/randomouscrap98/gontentapi/utils"
 
 	_ "github.com/mattn/go-sqlite3"
@@ -90,17 +91,11 @@ func (gctx *GonContext) IsExpired(user *UserSession) bool {
 	return time.Now().After(user.Created.Add(time.Duration(gctx.config.LoginExpire)))
 }
 
-// Retrieve the default data for any page load. Add your additional data to this
-// map before rendering
-func (gctx *GonContext) GetDefaultData(r *http.Request) map[string]any {
-	rinfo := utils.GetRuntimeInfo()
-	result := make(map[string]any)
-	result["root"] = template.URL(gctx.config.RootPath)
-	result["appversion"] = Version
-	result["runtimeInfo"] = rinfo
-	result["requestUri"] = r.URL.RequestURI()
-	result["cachebust"] = gctx.created.Format(time.RFC3339)
-	result["title"] = "Gontentapi"
+// Return the current user session if it exists, otherwise return nil. There are
+// "no errors" because, if the cookie doesn't exist, it's the same as if the
+// cookie is expired. the only time something is invalid is if something went
+// wrong RETRIEVING the cookie, which is very unlikely (and we just log it)
+func (gctx *GonContext) GetCurrentUser(r *http.Request) *UserSession {
 	cookie, err := r.Cookie(gctx.config.LoginCookie)
 	if err != nil {
 		if err != http.ErrNoCookie {
@@ -111,11 +106,27 @@ func (gctx *GonContext) GetDefaultData(r *http.Request) map[string]any {
 		defer gctx.sessionLock.Unlock() // SHOULD be fine... don't do too much here anyway!
 		user, ok := gctx.sessions[cookie.Value]
 		if ok && !gctx.IsExpired(user) {
-			result["user"] = user
-			result["loggedin"] = true
+			return user
 		}
 	}
-	//"RawHtml": func(c string) template.HTML { return template.HTML(c) },
+	return nil
+}
+
+// Retrieve the default data for any page load. Add your additional data to this
+// map before rendering
+func (gctx *GonContext) GetDefaultData(r *http.Request, user *UserSession) map[string]any {
+	rinfo := utils.GetRuntimeInfo()
+	result := make(map[string]any)
+	result["root"] = template.URL(gctx.config.RootPath)
+	result["appversion"] = Version
+	result["runtimeInfo"] = rinfo
+	result["requestUri"] = r.URL.RequestURI()
+	result["cachebust"] = gctx.created.Format(time.RFC3339)
+	result["title"] = "Gontentapi"
+	if user != nil {
+		result["user"] = user
+		result["loggedin"] = true
+	}
 	return result
 }
 
@@ -201,7 +212,55 @@ func (gctx *GonContext) AddSession(user *UserSession) (string, error) {
 	return sessid, nil
 }
 
-func (gtcx *GonContext) AddPageData(hash string, data map[string]any) error {
+// Add all the page data (main page, subpages, etc) for
+func (gctx *GonContext) AddPageData(hash string, user *UserSession, data map[string]any) error {
+	var uid int64
+	if user != nil {
+		uid = int64(user.Uid)
+	}
+
+	var mainpage contentapi.Content
+
+	if hash == "" {
+		// This is the root page
+		mainpage.Name = "Root"
+	} else {
+		q := contentapi.NewQuery()
+		q.Sql = "SELECT id,name,hash,text,parentId,contentType,createDate FROM content WHERE hash = ?"
+		q.AddParams(hash)
+		q.AndViewable("id", uid)
+		q.Finalize()
+		err := gctx.contentdb.Get(&mainpage, q.Sql, q.Params...)
+
+		if err != nil {
+			if err == sql.ErrNoRows {
+				return &utils.NotFound{Message: fmt.Sprintf("No content with hash %s", hash)}
+			} else {
+				return err
+			}
+		}
+	}
+
+	data["title"] = mainpage.Name
+	data["mainpage"] = mainpage
+
+	q := contentapi.NewQuery()
+	q.Sql = "SELECT id,name,hash,'' as text,parentId,contentType,createDate FROM content " +
+		"WHERE parentId = ? AND contentType <> ?"
+	q.AddParams(mainpage.Id, contentapi.ContentType_File)
+	q.AndViewable("id", uid)
+	q.Order = "name"
+	q.Finalize()
+
+	subpages := make([]contentapi.Content, 0)
+	err := gctx.contentdb.Select(&subpages, q.Sql, q.Params...)
+
+	if err != nil {
+		return err
+	}
+
+	data["subpages"] = subpages
+
 	// result := make([]QueryByPuzzleset, 0)
 	// err := mctx.sudokuDb.Select(&result,
 	// 	"SELECT p.pid, (c.cid IS NOT NULL) as completed, (i.ipid IS NOT NULL) as paused, c.completed as completedOn, i.paused as pausedOn "+

@@ -13,11 +13,13 @@ import (
 
 func handleError(err error, w http.ResponseWriter) bool {
 	if err != nil {
-		_, ok := err.(*utils.BadRequest)
-		if ok {
-			http.Error(w, err.Error(), http.StatusBadRequest)
-		} else {
-			http.Error(w, fmt.Sprintf("UNEXPECTED ERROR: %s", err), http.StatusInternalServerError)
+		switch e := err.(type) {
+		case *utils.NotFound:
+			http.Error(w, e.Error(), http.StatusNotFound)
+		case *utils.BadRequest:
+			http.Error(w, e.Error(), http.StatusBadRequest)
+		default:
+			http.Error(w, fmt.Sprintf("UNEXPECTED ERROR: %s", e), http.StatusInternalServerError)
 		}
 		return true
 	}
@@ -27,9 +29,21 @@ func handleError(err error, w http.ResponseWriter) bool {
 func SetupRoutes(r *chi.Mux, gctx *GonContext) error {
 	// --- Normal routes ---
 	r.Get("/", func(w http.ResponseWriter, r *http.Request) {
-		data := gctx.GetDefaultData(r)
-		gctx.RunTemplate("index.tmpl", w, data)
+		// Index has nothing for now, just take them to the pages
+		http.Redirect(w, r, "/pages", http.StatusFound)
 	})
+	pagesRoute := func(w http.ResponseWriter, r *http.Request) {
+		user := gctx.GetCurrentUser(r)
+		data := gctx.GetDefaultData(r, user)
+		err := gctx.AddPageData(chi.URLParam(r, "slug"), user, data)
+		if handleError(err, w) {
+			return
+		}
+		gctx.RunTemplate("index.tmpl", w, data)
+	}
+	// Retrieving a page is the same whether you have a slug or not
+	r.Get("/pages", pagesRoute)
+	r.Get("/pages/{slug}", pagesRoute)
 	r.Post("/login", func(w http.ResponseWriter, r *http.Request) {
 		username := r.FormValue("username")
 		password := r.FormValue("password")

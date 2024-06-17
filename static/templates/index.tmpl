@@ -27,24 +27,39 @@
 <body>
 
 <header>
-{{if not .loggedin}}
-<form method="POST" action="{{.root}}/login">
-  <input type="text" name="username" placeholder="Username">
-  <input type="password" name="password" placeholder="Password">
-  <input type="hidden" name="return" value="{{.requestUri}}">
-  <input type="submit" value="Login">
-</form>
-{{else}}
-<img src="{{UploadUrl .user.Avatar}}" class="avatar">
-<form method="POST" action="{{.root}}/logout">
-  <input type="hidden" name="return" value="{{.requestUri}}">
-  <input type="submit" value="Logout - {{.user.Username}} [{{.user.Uid}}]">
-</form>
-{{end}}
+  {{if not .loggedin}}
+  <form method="POST" action="{{.root}}/login">
+    <input type="text" name="username" placeholder="Username">
+    <input type="password" name="password" placeholder="Password">
+    <input type="hidden" name="return" value="{{.requestUri}}">
+    <input type="submit" value="Login">
+  </form>
+  {{else}}
+  <form method="POST" action="{{.root}}/logout">
+    <img src="{{UploadUrl .user.Avatar}}" class="avatar">
+    <input type="hidden" name="return" value="{{.requestUri}}">
+    <input type="submit" value="Logout - {{.user.Username}} [{{.user.Uid}}]">
+  </form>
+  {{end}}
 </header>
 
-<h1>{{.title}}</h1>
+<main>
 
-<section>
-<p>Hello world</p>
-</section>
+  <h1>{{.title}}</h1>
+
+  <article>
+    {{if .mainpage.Id}}
+    <pre id="content">{{.mainpage.Text}}</pre>
+    {{end}}
+  </article>
+
+  <section id="subpages">
+    <h3>Subpages: {{len .subpages}}</h3>
+    <ul>
+    {{range .subpages}}
+    <li><a href="{{$.root}}/pages/{{.Hash}}">{{.Name}}</a></li>
+    {{end}}
+    </ul>
+  </section>
+
+</main>
