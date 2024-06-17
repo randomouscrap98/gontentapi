@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+
+{{template "commonmeta.tmpl" .}}
+{{template "commonincludes.tmpl" .}}
+<link rel="stylesheet" href="{{.root}}/static/comments.css?{{.cachebust}}">
+
+<body>
+
+{{if not .iframe}}
+{{template "header.tmpl" .}}
+{{end}}
+
+<main>
+
+</main>
+
+{{if not .iframe}}
+{{template "footer.tmpl" .}}
+{{end}}

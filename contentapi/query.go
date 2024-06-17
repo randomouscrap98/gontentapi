@@ -1,6 +1,7 @@
 package contentapi
 
 import (
+	"fmt"
 	"strings"
 )
 
@@ -40,6 +41,15 @@ func (q *Query) AndViewable(cidField string, user int64) {
 	q.Sql += " AND deleted = 0 AND " + cidField +
 		" IN (SELECT contentId FROM content_permissions WHERE read = 1 AND userId IN (?, ?))"
 	q.Params = append(q.Params, 0, user)
+}
+
+// Add the query for comment viewable (and is a comment). Make sure you already
+// have a where clause (you can do WHERE 1)
+func (q *Query) AndCommentViewable(table string) {
+	if table != "" {
+		table += "."
+	}
+	q.Sql += fmt.Sprintf("AND %[1]sdeleted = 0 AND %[1]smodule IS NULL", table)
 }
 
 // Add the finishing touches (limit, skip, etc)

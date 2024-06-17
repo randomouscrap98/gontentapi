@@ -1,0 +1,17 @@
+<header>
+  {{if not .loggedin}}
+  <form method="POST" action="{{.root}}/login">
+    <input type="text" name="username" placeholder="Username">
+    <input type="password" name="password" placeholder="Password">
+    <input type="hidden" name="return" value="{{.requestUri}}">
+    <input type="submit" value="Login">
+  </form>
+  {{else}}
+  <form method="POST" action="{{.root}}/logout">
+    <img src="{{UploadUrl .user.Avatar}}" class="avatar">
+    <input type="hidden" name="return" value="{{.requestUri}}">
+    <input type="submit" value="Logout - {{.user.Username}} [{{.user.Uid}}]">
+  </form>
+  {{end}}
+</header>
+

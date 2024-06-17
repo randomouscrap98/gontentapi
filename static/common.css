@@ -1,0 +1,48 @@
+body {
+  padding: 0;
+  margin: 0;
+  font-family: sans-serif;
+}
+
+/* --------------- Header -------------- */
+header {
+  background-color: #333;
+  margin-bottom: 0.5em;
+  padding: 0.2em;
+}
+
+header form > * {
+  vertical-align: middle;
+}
+
+header form input {
+  min-width: 3em;
+}
+
+main {
+  margin: 0 1em;
+}
+
+/* --------------- Elements -------------- */
+img.avatar {
+  object-fit: cover;
+  width: 3em;
+  height: 3em;
+}
+
+header .avatar, .pageinfo .avatar {
+  width: 1.2em;
+  height: 1.2em;
+}
+
+a sub, h1 sub {
+  font-size: 0.8em;
+  vertical-align: baseline;
+}
+
+/* --------------- Footer -------------- */
+footer {
+  font-size: 0.8em;
+  margin: 1em;
+  text-align: right;
+}

@@ -332,8 +332,25 @@ func (gctx *GonContext) AddPageData(hash string, user *UserSession, data map[str
 	usermap := contentapi.GetMappedUsers(users)
 
 	// Apply users to content as needed
-	if mainpage.Id > 0 && mainpage.ApplyUser(usermap) == nil {
-		log.Printf("WARN: couldn't find user for page %s (%d)", mainpage.Name, mainpage.Id)
+	if mainpage.Id > 0 {
+		if mainpage.ApplyUser(usermap) == nil {
+			log.Printf("WARN: couldn't find user for page %s (%d)", mainpage.Name, mainpage.Id)
+		}
+
+		// Find number of comments (just for fun)
+		q = contentapi.NewQuery()
+		q.Sql = "SELECT COUNT(*) FROM messages WHERE contentId = ?"
+		q.AddParams(mainpage.Id)
+		q.AndCommentViewable("")
+		q.Finalize()
+
+		var count int64
+		err = gctx.contentdb.Get(&count, q.Sql, q.Params...)
+		if err != nil {
+			return err
+		}
+
+		data["numcomments"] = count
 	}
 
 	// Because everything is a struct rather than a pointer, this actually gets copied in.

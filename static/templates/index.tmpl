@@ -3,45 +3,13 @@
 
 <head>
 
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<meta name="rating" content="general">
-<meta name="description" content="Readonly contentapi.">
-<meta http-equiv="X-UA-Compatible" content="IE=edge" />
-<title>{{.title}}</title>
-
-<!-- The 12y2 (and 12y?) markup system requirements -->
-<script src="{{.root}}/static/markup/langs.js?{{.cachebust}}"></script>
-<script src="{{.root}}/static/markup/legacy.js?{{.cachebust}}"></script>
-<script src="{{.root}}/static/markup/parse.js?{{.cachebust}}"></script>
-<script src="{{.root}}/static/markup/render.js?{{.cachebust}}"></script>
-<script src="{{.root}}/static/markup/helpers.js?{{.cachebust}}"></script>
-<link rel="stylesheet" href="{{.root}}/static/markup/markup.css?{{.cachebust}}">
-
-<!-- Requirements for markup that we must provide -->
-<script src="{{.root}}/static/markup.js?{{.cachebust}}"></script>
-
-<!-- Our actual page requirements -->
+{{template "commonmeta.tmpl" .}}
+{{template "commonincludes.tmpl" .}}
 <link rel="stylesheet" href="{{.root}}/static/index.css?{{.cachebust}}">
 
 <body>
 
-<header>
-  {{if not .loggedin}}
-  <form method="POST" action="{{.root}}/login">
-    <input type="text" name="username" placeholder="Username">
-    <input type="password" name="password" placeholder="Password">
-    <input type="hidden" name="return" value="{{.requestUri}}">
-    <input type="submit" value="Login">
-  </form>
-  {{else}}
-  <form method="POST" action="{{.root}}/logout">
-    <img src="{{UploadUrl .user.Avatar}}" class="avatar">
-    <input type="hidden" name="return" value="{{.requestUri}}">
-    <input type="submit" value="Logout - {{.user.Username}} [{{.user.Uid}}]">
-  </form>
-  {{end}}
-</header>
+{{template "header.tmpl" .}}
 
 <main>
 
@@ -85,4 +53,13 @@
     </ul>
   </section>
 
+  {{if .mainpage.Id}}
+  <section id="comments">
+    <h3>Comments: {{.numcomments}}</h3>
+    <iframe src="{{.root}}/comments/{{.mainpage.Id}}?iframe=1"></iframe>
+  </section>
+  {{end}}
+
 </main>
+
+{{template "footer.tmpl" .}}

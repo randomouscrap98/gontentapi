@@ -44,6 +44,16 @@ func SetupRoutes(r *chi.Mux, gctx *GonContext) error {
 	// Retrieving a page is the same whether you have a slug or not
 	r.Get("/pages", pagesRoute)
 	r.Get("/pages/{slug}", pagesRoute)
+	r.Get("/comments/{slug}", func(w http.ResponseWriter, r *http.Request) {
+		err := r.ParseForm()
+		if handleError(err, w) {
+			return
+		}
+		user := gctx.GetCurrentUser(r)
+		data := gctx.GetDefaultData(r, user)
+		_, data["iframe"] = r.Form["iframe"]
+		gctx.RunTemplate("comments.tmpl", w, data)
+	})
 	r.Post("/login", func(w http.ResponseWriter, r *http.Request) {
 		username := r.FormValue("username")
 		password := r.FormValue("password")
