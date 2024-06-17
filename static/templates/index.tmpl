@@ -45,11 +45,34 @@
 
 <main>
 
-  <h1>{{.title}}</h1>
+  <h1>{{.title}}{{if .mainpage.Private}}<sub>&#x1F512;</sub>{{end}}</h1>
 
   <article>
+    <nav class="breadcrumbs">
+      {{range .breadcrumbs}}
+      <span>/</span>
+      {{template "pagelink.tmpl" .}}
+      {{end}}
+    </nav>
     {{if .mainpage.Id}}
     <pre id="content">{{.mainpage.Text}}</pre>
+    <dl class="pageinfo">
+      <dt>ID:</dt>
+      <dd data-id="{{.mainpage.Id}}">{{.mainpage.Id}}</dd>
+      <dt>Type:</dt>
+      <dd data-contenttype="{{.mainpage.ContentType}}">{{.mainpage.ContentType}}</dd>
+      <dt>CDate:</dt>
+      <dd data-createdate="{{.mainpage.Created}}">{{.mainpage.Created}}</dd>
+      <dt>CUser:</dt>
+      <dd data-createuser="{{.mainpage.CreateUserId}}">
+      {{- if .mainpage.CreateUser -}}
+      <img src="{{UploadUrl .mainpage.CreateUser.Avatar}}" class="avatar">
+      <span class="username">{{.mainpage.CreateUser.Username}}</span>
+      {{- else -}}
+      {{.mainpage.CreateUserId}}
+      {{- end -}}
+      </dd>
+    </dl>
     {{end}}
   </article>
 
@@ -57,7 +80,7 @@
     <h3>Subpages: {{len .subpages}}</h3>
     <ul>
     {{range .subpages}}
-    <li><a href="{{$.root}}/pages/{{.Hash}}">{{.Name}}</a></li>
+    <li>{{template "pagelink.tmpl" .}}</li>
     {{end}}
     </ul>
   </section>

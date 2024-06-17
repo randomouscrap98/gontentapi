@@ -14,6 +14,7 @@ import (
 	"log"
 	"net/http"
 	"path/filepath"
+	"slices"
 	"sync"
 	"time"
 
@@ -62,7 +63,15 @@ func NewContext(config *Config) (*GonContext, error) {
 		"RawHtml":   func(c string) template.HTML { return template.HTML(c) },
 		"RawUrl":    func(c string) template.URL { return template.URL(c) },
 		"UploadUrl": func(c string) string { return fmt.Sprintf("%s/uploads/%s", config.RootPath, c) },
+		"PageUrl": func(c *contentapi.Content) string {
+			url := config.RootPath + "/pages"
+			if c.Id != 0 { // The root page (or otherwise). DON'T check hash: we WANT it to fail if hash empty
+				url += "/" + c.Hash
+			}
+			return url
+		},
 	}).ParseGlob(filepath.Join(config.Templates, "*.tmpl"))
+	//<li><a href="{{$.root}}/pages/{{.Hash}}">{{.Name}}</a></li>
 
 	if err != nil {
 		return nil, err
@@ -212,6 +221,35 @@ func (gctx *GonContext) AddSession(user *UserSession) (string, error) {
 	return sessid, nil
 }
 
+func MakeRoot(c *contentapi.Content) *contentapi.Content {
+	if c == nil {
+		c = &contentapi.Content{}
+	}
+	c.Name = "Root"
+	return c
+}
+
+// Retrieve users for the given uids
+func (gctx *GonContext) GetUsers(uids ...int64) ([]contentapi.User, error) {
+	// To reduce strain on the system (and because the params must be "any")
+	// we only put params in that haven't been seen
+	params := utils.UniqueParams(uids...)
+	q := contentapi.NewQuery()
+	q.Sql = "SELECT " + contentapi.GetUserFields("") + " FROM users WHERE id IN ("
+	q.AddQueryParams(params...)
+	q.Sql += ")"
+	q.Finalize()
+
+	users := make([]contentapi.User, 0)
+	err := gctx.contentdb.Select(&users, q.Sql, q.Params...)
+
+	if err != nil {
+		return nil, err
+	}
+
+	return users, nil
+}
+
 // Add all the page data (main page, subpages, etc) for
 func (gctx *GonContext) AddPageData(hash string, user *UserSession, data map[string]any) error {
 	var uid int64
@@ -223,12 +261,12 @@ func (gctx *GonContext) AddPageData(hash string, user *UserSession, data map[str
 
 	if hash == "" {
 		// This is the root page
-		mainpage.Name = "Root"
+		MakeRoot(&mainpage)
 	} else {
 		q := contentapi.NewQuery()
-		q.Sql = "SELECT id,name,hash,text,parentId,contentType,createDate FROM content WHERE hash = ?"
+		q.Sql = "SELECT " + contentapi.GetContentFields("c", true) + " FROM content c WHERE c.hash = ?"
 		q.AddParams(hash)
-		q.AndViewable("id", uid)
+		q.AndViewable("c.id", uid)
 		q.Finalize()
 		err := gctx.contentdb.Get(&mainpage, q.Sql, q.Params...)
 
@@ -241,15 +279,12 @@ func (gctx *GonContext) AddPageData(hash string, user *UserSession, data map[str
 		}
 	}
 
-	data["title"] = mainpage.Name
-	data["mainpage"] = mainpage
-
 	q := contentapi.NewQuery()
-	q.Sql = "SELECT id,name,hash,'' as text,parentId,contentType,createDate FROM content " +
-		"WHERE parentId = ? AND contentType <> ?"
+	q.Sql = "SELECT " + contentapi.GetContentFields("c", false) + " FROM content c " +
+		"WHERE c.parentId = ? AND c.contentType <> ?"
 	q.AddParams(mainpage.Id, contentapi.ContentType_File)
-	q.AndViewable("id", uid)
-	q.Order = "name"
+	q.AndViewable("c.id", uid)
+	q.Order = "c.name"
 	q.Finalize()
 
 	subpages := make([]contentapi.Content, 0)
@@ -259,25 +294,54 @@ func (gctx *GonContext) AddPageData(hash string, user *UserSession, data map[str
 		return err
 	}
 
-	data["subpages"] = subpages
+	breadcrumbs := make([]*contentapi.Content, 0)
+	pid := mainpage.Id // Include the current page in the breadcrumbs
 
-	// result := make([]QueryByPuzzleset, 0)
-	// err := mctx.sudokuDb.Select(&result,
-	// 	"SELECT p.pid, (c.cid IS NOT NULL) as completed, (i.ipid IS NOT NULL) as paused, c.completed as completedOn, i.paused as pausedOn "+
-	// 		"FROM puzzles p LEFT JOIN "+
-	// 		"completions c ON c.pid=p.pid LEFT JOIN "+
-	// 		"inprogress i ON i.pid=p.pid "+
-	// 		"WHERE puzzleset=? AND (c.uid=? OR c.uid IS NULL) AND "+
-	// 		"(i.uid=? OR i.uid IS NULL) "+
-	// 		"GROUP BY p.pid ORDER BY p.pid ",
-	// 	puzzleset, uid, uid,
-	// )
-	// var result QueryByPid
-	// err := mctx.sudokuDb.Get(&result,
-	// 	"SELECT p.*, COALESCE(i.puzzle,'') as playersolution, COALESCE(i.seconds,0) as seconds FROM puzzles p LEFT JOIN "+
-	// 		"inprogress i ON p.pid=i.pid WHERE p.pid=? AND "+
-	// 		"(i.uid=? OR i.uid IS NULL)",
-	// 	pid, uid,
-	// )
+	// Loop to make breadcrumbs
+	for pid != 0 {
+		q := contentapi.NewQuery()
+		q.Sql = "SELECT " + contentapi.GetContentFields("c", false) + " FROM content c " +
+			"WHERE c.id = ?"
+		q.AddParams(pid)
+		q.AndViewable("c.id", uid)
+		q.Finalize()
+
+		var breadcrumb contentapi.Content
+		err := gctx.contentdb.Get(&breadcrumb, q.Sql, q.Params...)
+		if err != nil {
+			if err == sql.ErrNoRows {
+				break // Nothing left to do?
+			} else {
+				return err
+			}
+		}
+
+		breadcrumbs = slices.Insert(breadcrumbs, 0, &breadcrumb)
+		pid = breadcrumb.ParentId
+	}
+
+	// Always insert root?
+	breadcrumbs = slices.Insert(breadcrumbs, 0, MakeRoot(nil))
+
+	// We need to lookup users for everything
+	users, err := gctx.GetUsers(mainpage.CreateUserId)
+	if err != nil {
+		return err
+	}
+
+	usermap := contentapi.GetMappedUsers(users)
+
+	// Apply users to content as needed
+	if mainpage.Id > 0 && mainpage.ApplyUser(usermap) == nil {
+		log.Printf("WARN: couldn't find user for page %s (%d)", mainpage.Name, mainpage.Id)
+	}
+
+	// Because everything is a struct rather than a pointer, this actually gets copied in.
+	// Probably bad but whatever (this is why we can't change it after the fact)
+	data["title"] = mainpage.Name
+	data["mainpage"] = mainpage
+	data["subpages"] = subpages
+	data["breadcrumbs"] = breadcrumbs
+
 	return nil
 }

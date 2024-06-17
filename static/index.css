@@ -46,7 +46,28 @@ img.avatar {
   height: 3em;
 }
 
-header .avatar {
+header .avatar, .pageinfo .avatar {
   width: 1.2em;
   height: 1.2em;
+}
+
+a sub, h1 sub {
+  font-size: 0.8em;
+  vertical-align: baseline;
+}
+
+.pageinfo {
+  background: #e3f6f9; /*#cdfffd;*/
+  padding: 0.5em;
+  font-size: 0.8em;
+  color: #444;
+}
+.pageinfo dt {
+  display: inline-block;
+  font-weight: bold;
+  margin-left: 0.5em;
+}
+.pageinfo dd {
+  display: inline-block;
+  margin: 0;
 }

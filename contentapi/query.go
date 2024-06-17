@@ -1,6 +1,8 @@
 package contentapi
 
-import ()
+import (
+	"strings"
+)
 
 type Query struct {
 	Sql    string // The actual SQL for the query
@@ -21,6 +23,16 @@ func NewQuery() Query {
 
 func (q *Query) AddParams(params ...any) {
 	q.Params = append(q.Params, params...)
+}
+
+// Add parameters AND the query part (?)
+func (q *Query) AddQueryParams(params ...any) {
+	q.Params = append(q.Params, params...)
+	pqs := make([]string, len(params))
+	for i := range pqs {
+		pqs[i] = "?"
+	}
+	q.Sql += strings.Join(pqs, ",")
 }
 
 // Add the query for viewable. Make sure you already have a where clause
