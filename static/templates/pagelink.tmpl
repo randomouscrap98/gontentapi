@@ -1,1 +1,1 @@
-<a href="{{PageUrl .}}" {{if .Private}}data-private=""{{end}}>{{.Name}}{{if .Private}}<sub>&#x1F512;</sub>{{end}}</a>
+<a href="{{PageUrl .}}" {{if .Private}}data-private=""{{end}}>{{template "contenttitle.tmpl" .}}</a>

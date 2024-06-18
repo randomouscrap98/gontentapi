@@ -13,7 +13,7 @@
 
 <main>
 
-  <h1>{{.title}}{{if .mainpage.Private}}<sub>&#x1F512;</sub>{{end}}</h1>
+  <h1>{{template "contenttitle.tmpl" .mainpage}}</h1>
 
   <article>
     <nav class="breadcrumbs">
@@ -57,6 +57,7 @@
   <section id="comments">
     <h3>Comments: {{.numcomments}}</h3>
     <iframe src="{{.root}}/comments/{{.mainpage.Hash}}?iframe=1"></iframe>
+    <a href="{{.root}}/comments/{{.mainpage.Hash}}">Dedicated comments page</a>
   </section>
   {{end}}
 

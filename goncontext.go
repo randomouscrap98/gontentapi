@@ -30,7 +30,7 @@ import (
 
 const (
 	BusyTimeout = 5000
-	Version     = "0.1.1"
+	Version     = "0.2.0"
 )
 
 type UserSession struct {
@@ -407,8 +407,8 @@ func (gctx *GonContext) AddCommentData(hash string, user *UserSession, page int,
 	q.Skip = gctx.config.CommentsPerPage * page
 	q.Finalize()
 
-	log.Printf("Final comment query: " + q.Sql)
-	log.Printf(fmt.Sprintf("Final params: %v", q.Params))
+	//log.Printf("Final comment query: " + q.Sql)
+	//log.Printf(fmt.Sprintf("Final params: %v", q.Params))
 
 	comments := make([]contentapi.Comment, 0)
 	err := gctx.contentdb.Select(&comments, q.Sql, q.Params...)

@@ -30,7 +30,7 @@ img.avatar {
   height: 3em;
 }
 
-header .avatar {
+header .avatar, .breadcrumbs .avatar {
   width: 1.2em;
   height: 1.2em;
 }
