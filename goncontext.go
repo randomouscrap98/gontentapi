@@ -362,14 +362,14 @@ func (gctx *GonContext) AddPageData(hash string, user *UserSession, data map[str
 	// Because everything is a struct rather than a pointer, this actually gets copied in.
 	// Probably bad but whatever (this is why we can't change it after the fact)
 	data["title"] = mainpage.Name
-	data["mainpage"] = mainpage
+	data["mainpage"] = &mainpage // Everything expects a pointer
 	data["subpages"] = subpages
 	data["breadcrumbs"] = breadcrumbs
 
 	return nil
 }
 
-func (gctx *GonContext) AddCommentData(hash string, user *UserSession, page int, data map[string]any) error {
+func (gctx *GonContext) AddCommentData(hash string, user *UserSession, page int, data map[string]any) ([]contentapi.Comment, error) {
 	var uid int64
 	if user != nil {
 		uid = int64(user.Uid)
@@ -379,7 +379,7 @@ func (gctx *GonContext) AddCommentData(hash string, user *UserSession, page int,
 
 	// Still need to lookup main page to make sure they have access to it
 	if hash == "" {
-		return &utils.BadRequest{Message: "Must specify a page hash to view comments!"}
+		return nil, &utils.BadRequest{Message: "Must specify a page hash to view comments!"}
 	} else {
 		q := contentapi.NewQuery()
 		q.Sql = "SELECT " + contentapi.GetContentFields("c", false) + " FROM content c WHERE c.hash = ?"
@@ -390,9 +390,9 @@ func (gctx *GonContext) AddCommentData(hash string, user *UserSession, page int,
 
 		if err != nil {
 			if err == sql.ErrNoRows {
-				return &utils.NotFound{Message: fmt.Sprintf("No content with hash %s", hash)}
+				return nil, &utils.NotFound{Message: fmt.Sprintf("No content with hash %s", hash)}
 			} else {
-				return err
+				return nil, err
 			}
 		}
 	}
@@ -414,7 +414,7 @@ func (gctx *GonContext) AddCommentData(hash string, user *UserSession, page int,
 	err := gctx.contentdb.Select(&comments, q.Sql, q.Params...)
 
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	// Have to pull out only uids (maybe there's a better way, who knows)
@@ -427,7 +427,7 @@ func (gctx *GonContext) AddCommentData(hash string, user *UserSession, page int,
 	// Need to look up users for each comment
 	users, err := gctx.GetUsers(commentUids...)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	usermap := contentapi.GetMappedUsers(users)
@@ -444,8 +444,8 @@ func (gctx *GonContext) AddCommentData(hash string, user *UserSession, page int,
 		}
 	}
 
-	data["mainpage"] = mainpage
+	data["mainpage"] = &mainpage // Everything expects a pointer
 	data["comments"] = comments
 
-	return nil
+	return comments, nil
 }

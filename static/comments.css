@@ -3,6 +3,9 @@
   font-size: 0.9em;
   text-align: right;
 }
+.commentnav a {
+  margin-left: 0.8em;
+}
 
 #comments {
   margin: 1em 0;

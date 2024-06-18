@@ -86,11 +86,13 @@ func SetupRoutes(r *chi.Mux, gctx *GonContext) error {
 			params.Set("page", fmt.Sprint(page-1))
 			data["newerpageurl"] = "?" + params.Encode()
 		}
-		params.Set("page", fmt.Sprint(page+1))
-		data["olderpageurl"] = "?" + params.Encode()
-		err = gctx.AddCommentData(chi.URLParam(r, "slug"), user, page, data)
+		comments, err := gctx.AddCommentData(chi.URLParam(r, "slug"), user, page, data)
 		if handleError(err, w) {
 			return
+		}
+		if len(comments) == gctx.config.CommentsPerPage {
+			params.Set("page", fmt.Sprint(page+1))
+			data["olderpageurl"] = "?" + params.Encode()
 		}
 		gctx.RunTemplate("comments.tmpl", w, data)
 	})
