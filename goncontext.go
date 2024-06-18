@@ -30,7 +30,7 @@ import (
 
 const (
 	BusyTimeout = 5000
-	Version     = "0.1"
+	Version     = "0.1.1"
 )
 
 type UserSession struct {
@@ -129,7 +129,7 @@ func (gctx *GonContext) GetDefaultData(r *http.Request, user *UserSession) map[s
 	result["root"] = template.URL(gctx.config.RootPath)
 	result["appversion"] = Version
 	result["runtimeInfo"] = rinfo
-	result["requestUri"] = r.URL.RequestURI()
+	result["requestUri"] = gctx.config.RootPath + r.URL.RequestURI()
 	result["cachebust"] = gctx.created.Format(time.RFC3339)
 	result["title"] = "Gontentapi"
 	if user != nil {
