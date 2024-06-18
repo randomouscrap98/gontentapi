@@ -34,7 +34,7 @@
       <dt>CUser:</dt>
       <dd data-createuser="{{.mainpage.CreateUserId}}">
       {{- if .mainpage.CreateUser -}}
-      <img src="{{UploadUrl .mainpage.CreateUser.Avatar}}" class="avatar">
+      {{template "avatar.tmpl" .mainpage.CreateUser.Avatar}}
       <span class="username">{{.mainpage.CreateUser.Username}}</span>
       {{- else -}}
       {{.mainpage.CreateUserId}}

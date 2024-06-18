@@ -8,7 +8,7 @@
   </form>
   {{else}}
   <form method="POST" action="{{.root}}/logout">
-    <img src="{{UploadUrl .user.Avatar}}" class="avatar">
+    {{template "avatar.tmpl" .user.Avatar}}
     <input type="hidden" name="return" value="{{.requestUri}}">
     <input type="submit" value="Logout - {{.user.Username}} [{{.user.Uid}}]">
   </form>

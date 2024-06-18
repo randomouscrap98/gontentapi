@@ -2,7 +2,6 @@ package main
 
 import (
 	//"context"
-	//"os"
 	//"regexp"
 	"bytes"
 	"crypto/sha1"
@@ -13,6 +12,7 @@ import (
 	"html/template"
 	"log"
 	"net/http"
+	"os"
 	"path/filepath"
 	"slices"
 	"sync"
@@ -41,15 +41,15 @@ type UserSession struct {
 }
 
 type GonContext struct {
-	config      *Config
-	decoder     *schema.Decoder
-	templates   *template.Template
-	sessions    map[string]*UserSession
-	sessionLock sync.Mutex
+	config        *Config
+	decoder       *schema.Decoder
+	templates     *template.Template
+	sessions      map[string]*UserSession
+	sessionLock   sync.Mutex
+	thumbnailLock sync.Mutex
+	created       time.Time
+	contentdb     *sqlx.DB
 	//chatlogIncludeRegex *regexp.Regexp
-	created time.Time
-	//drawDataMu          sync.Mutex
-	contentdb *sqlx.DB
 }
 
 func NewContext(config *Config) (*GonContext, error) {
@@ -57,12 +57,19 @@ func NewContext(config *Config) (*GonContext, error) {
 	// if err != nil {
 	// 	return nil, err
 	// }
+	// Make sure we can initialize the thumbnail folder
+	err := os.MkdirAll(config.ThumbnailFolder, 0750)
+	if err != nil {
+		return nil, err
+	}
+
 	// We initialize the templates first because we don't really need
 	// hot reloading (also it's just better for performance... though memory usage...
 	templates, err := template.New("alltemplates").Funcs(template.FuncMap{
-		"RawHtml":   func(c string) template.HTML { return template.HTML(c) },
-		"RawUrl":    func(c string) template.URL { return template.URL(c) },
-		"UploadUrl": func(c string) string { return fmt.Sprintf("%s/uploads/%s", config.RootPath, c) },
+		"RawHtml":      func(c string) template.HTML { return template.HTML(c) },
+		"RawUrl":       func(c string) template.URL { return template.URL(c) },
+		"UploadUrl":    func(c string) string { return fmt.Sprintf("%s/uploads/%s", config.RootPath, c) },
+		"ThumbnailUrl": func(c string) string { return fmt.Sprintf("%s/thumbnails/%s", config.RootPath, c) },
 		"PageUrl": func(c *contentapi.Content) string {
 			url := config.RootPath + "/pages"
 			if c.Id != 0 { // The root page (or otherwise). DON'T check hash: we WANT it to fail if hash empty
@@ -71,7 +78,6 @@ func NewContext(config *Config) (*GonContext, error) {
 			return url
 		},
 	}).ParseGlob(filepath.Join(config.Templates, "*.tmpl"))
-	//<li><a href="{{$.root}}/pages/{{.Hash}}">{{.Name}}</a></li>
 
 	if err != nil {
 		return nil, err

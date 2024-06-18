@@ -8,19 +8,22 @@ import (
 )
 
 type Config struct {
-	Address         string         // Full address to host on (includes IP to limit to localhost/etc)
-	ShutdownTime    utils.Duration // Time to wait for server to shutdown
-	StaticFiles     string         // Where the static files for ALL endpoints go
-	HeaderLimit     int            // Maximum allowed header size
-	Timeout         utils.Duration // How long a connection is allowed to last
-	Database        string         // Path to the contentapi database file
-	Uploads         string         // Path to all the uploaded files
-	Templates       string         // Path to all the templates
-	RootPath        string         // The root path to our service (the url path)
-	LoginCookie     string         // Name of the login cookie
-	LoginExpire     utils.Duration // How long the login cookie lasts
-	MaxSessions     int            // How many total sessions can exist
-	CommentsPerPage int            // How many comments to display per page (not user settable)
+	Address              string         // Full address to host on (includes IP to limit to localhost/etc)
+	ShutdownTime         utils.Duration // Time to wait for server to shutdown
+	StaticFiles          string         // Where the static files for ALL endpoints go
+	HeaderLimit          int            // Maximum allowed header size
+	Timeout              utils.Duration // How long a connection is allowed to last
+	Database             string         // Path to the contentapi database file
+	Uploads              string         // Path to all the uploaded files
+	Templates            string         // Path to all the templates
+	RootPath             string         // The root path to our service (the url path)
+	LoginCookie          string         // Name of the login cookie
+	LoginExpire          utils.Duration // How long the login cookie lasts
+	MaxSessions          int            // How many total sessions can exist
+	CommentsPerPage      int            // How many comments to display per page (not user settable)
+	ThumbnailFolder      string         // Where to store thumbnails (will be created)
+	ThumbnailSize        int            // Fixed size for thumbnail generation
+	ThumbnailJpegQuality int            // Quality of jpeg thumbnails
 }
 
 func GetDefaultConfig_Toml() string {
@@ -37,6 +40,9 @@ LoginCookie="gontentapi_login" # Name of login cookie
 LoginExpire="1500h"            # How long the login cookie lasts
 MaxSessions=10000              # How many total sessions can exist
 CommentsPerPage=100            # How many comments to display per page
+ThumbnailFolder="data/thumbnails"  # Where to store thumbnails (will be created)
+ThumbnailSize=100              # Thumbnails are a fixed size (and maybe square)
+ThumbnailJpegQuality=85        # Quality of thumbnail jpegs
 
 # MUST set to empty path if hosted at root!
 RootPath=""                   # Root path for our service. Useful when running behind a reverse proxy

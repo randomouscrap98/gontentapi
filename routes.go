@@ -2,12 +2,25 @@ package main
 
 import (
 	"fmt"
+	"image"
 	"log"
 	"net/http"
 	"net/url"
+	"os"
+	"path/filepath"
 	"strconv"
 	"time"
 
+	_ "image/gif"
+	"image/jpeg"
+	_ "image/jpeg"
+	_ "image/png"
+
+	_ "golang.org/x/image/bmp"
+	_ "golang.org/x/image/tiff"
+	_ "golang.org/x/image/webp"
+
+	"github.com/disintegration/imaging"
 	"github.com/go-chi/chi/v5"
 
 	"github.com/randomouscrap98/gontentapi/utils"
@@ -15,6 +28,7 @@ import (
 
 func handleError(err error, w http.ResponseWriter) bool {
 	if err != nil {
+		log.Printf("REQUEST ERROR: %s", err)
 		switch e := err.(type) {
 		case *utils.NotFound:
 			http.Error(w, e.Error(), http.StatusNotFound)
@@ -106,6 +120,52 @@ func SetupRoutes(r *chi.Mux, gctx *GonContext) error {
 		returnUrl := r.FormValue("return")
 		utils.DeleteCookie(gctx.config.LoginCookie, w)
 		http.Redirect(w, r, returnUrl, http.StatusSeeOther)
+	})
+	r.Get("/thumbnails/{slug:[a-z0-9_-]+}", func(w http.ResponseWriter, r *http.Request) {
+		imgslug := chi.URLParam(r, "slug")
+		thumbpath := filepath.Join(gctx.config.ThumbnailFolder, imgslug)
+		// Must check for thumbnail in lock. Hopefully the thumbnail exists and we
+		// skip all that generation crap
+		gctx.thumbnailLock.Lock()
+		defer gctx.thumbnailLock.Unlock()
+		file, err := os.Open(thumbpath)
+		if err != nil {
+			// This is a weird error; we only handle non-existent thumbnails
+			if !os.IsNotExist(err) {
+				handleError(err, w)
+				return
+			}
+			// Load the original image so we can make a thumbnail
+			origfile, err := os.Open(filepath.Join(gctx.config.Uploads, imgslug))
+			if handleError(err, w) {
+				return
+			}
+			defer origfile.Close()
+			img, _, err := image.Decode(origfile)
+			// Then we just use a third party library to generate a thumbnail
+			thumbimg := imaging.Thumbnail(img, gctx.config.ThumbnailSize, gctx.config.ThumbnailSize, imaging.Lanczos)
+			outfile, err := os.Create(thumbpath)
+			if handleError(err, w) {
+				return
+			}
+			options := jpeg.Options{
+				Quality: gctx.config.ThumbnailJpegQuality,
+			}
+			err = jpeg.Encode(outfile, thumbimg, &options)
+			outfile.Close()
+			if handleError(err, w) {
+				return
+			}
+			file, err = os.Open(thumbpath)
+			if handleError(err, w) {
+				return
+			}
+		}
+		// Serve the thumbnail. We don't go check the modtime, just use the
+		// system start date (it's fine, the files shouldn't change during runtime
+		// but MIGHT change between runs...)
+		http.ServeContent(w, r, imgslug+".jpg", gctx.created, file)
+		file.Close()
 	})
 	// --- Static files ---
 	utils.AngryRobots(r)

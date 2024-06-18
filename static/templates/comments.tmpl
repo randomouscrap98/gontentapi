@@ -22,7 +22,7 @@
   <div class="comment" id="comment_{{.Id}}">
     <div class="left">
       {{if .CreateUser}}
-      <img src="{{UploadUrl .CreateUser.Avatar}}" class="avatar">
+      {{template "avatar.tmpl" .CreateUser.Avatar}}
       {{else}}
       <img alt="unknown user" class="avatar">
       {{end}}
