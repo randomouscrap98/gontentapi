@@ -362,3 +362,84 @@ func (gctx *GonContext) AddPageData(hash string, user *UserSession, data map[str
 
 	return nil
 }
+
+func (gctx *GonContext) AddCommentData(hash string, user *UserSession, page int, data map[string]any) error {
+	var uid int64
+	if user != nil {
+		uid = int64(user.Uid)
+	}
+
+	var mainpage contentapi.Content
+
+	// Still need to lookup main page to make sure they have access to it
+	if hash == "" {
+		return &utils.BadRequest{Message: "Must specify a page hash to view comments!"}
+	} else {
+		q := contentapi.NewQuery()
+		q.Sql = "SELECT " + contentapi.GetContentFields("c", false) + " FROM content c WHERE c.hash = ?"
+		q.AddParams(hash)
+		q.AndViewable("c.id", uid)
+		q.Finalize()
+		err := gctx.contentdb.Get(&mainpage, q.Sql, q.Params...)
+
+		if err != nil {
+			if err == sql.ErrNoRows {
+				return &utils.NotFound{Message: fmt.Sprintf("No content with hash %s", hash)}
+			} else {
+				return err
+			}
+		}
+	}
+
+	// Get comments
+	q := contentapi.NewQuery()
+	q.Sql = "SELECT " + contentapi.GetCommentFields("m") + " FROM messages m WHERE m.contentId = ?"
+	q.AddParams(mainpage.Id)
+	q.AndCommentViewable("m")
+	q.Order = "m.id DESC"
+	q.Limit = gctx.config.CommentsPerPage
+	q.Skip = gctx.config.CommentsPerPage * page
+	q.Finalize()
+
+	log.Printf("Final comment query: " + q.Sql)
+	log.Printf(fmt.Sprintf("Final params: %v", q.Params))
+
+	comments := make([]contentapi.Comment, 0)
+	err := gctx.contentdb.Select(&comments, q.Sql, q.Params...)
+
+	if err != nil {
+		return err
+	}
+
+	// Have to pull out only uids (maybe there's a better way, who knows)
+	commentUids := make([]int64, len(comments)+1)
+	for i := range comments {
+		commentUids[i] = comments[i].CreateUserId
+	}
+	commentUids[len(comments)] = mainpage.CreateUserId
+
+	// Need to look up users for each comment
+	users, err := gctx.GetUsers(commentUids...)
+	if err != nil {
+		return err
+	}
+
+	usermap := contentapi.GetMappedUsers(users)
+
+	// Might as well apply the thing here (though I might remove it)
+	if mainpage.ApplyUser(usermap) == nil {
+		log.Printf("WARN: couldn't find user for page %s (%d)", mainpage.Name, mainpage.Id)
+	}
+
+	// Apply user for every comment. It's fine if they don't exist
+	for i := range comments {
+		if comments[i].ApplyUser(usermap) == nil {
+			log.Printf("WARN: couldn't find user for page %s (%d)", mainpage.Name, mainpage.Id)
+		}
+	}
+
+	data["mainpage"] = mainpage
+	data["comments"] = comments
+
+	return nil
+}

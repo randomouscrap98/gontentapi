@@ -62,11 +62,20 @@ func GetContentFields(table string, allFields bool) string {
 
 // Basic COMMENT data from database (no modules in this system)
 type Comment struct {
-	Id        int64  `db:"id"`
-	ContentId int64  `db:"contentId"`
-	Created   string `db:"createDate"`
-	Text      string `db:"text"`
+	Id           int64  `db:"id"`
+	ContentId    int64  `db:"contentId"`
+	Created      string `db:"createDate"`
+	Text         string `db:"text"`
+	CreateUserId int64  `db:"createUserId"`
 
 	Values     map[string]string
 	CreateUser *User
+}
+
+// Return all fields for SELECT for comment query
+func GetCommentFields(table string) string {
+	if table != "" {
+		table += "."
+	}
+	return fmt.Sprintf("%[1]sid,%[1]scontentId,%[1]screateDate,%[1]stext,%[1]screateUserId", table)
 }

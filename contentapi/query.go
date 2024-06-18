@@ -49,7 +49,7 @@ func (q *Query) AndCommentViewable(table string) {
 	if table != "" {
 		table += "."
 	}
-	q.Sql += fmt.Sprintf("AND %[1]sdeleted = 0 AND %[1]smodule IS NULL", table)
+	q.Sql += fmt.Sprintf(" AND %[1]sdeleted = 0 AND %[1]smodule IS NULL", table)
 }
 
 // Add the finishing touches (limit, skip, etc)

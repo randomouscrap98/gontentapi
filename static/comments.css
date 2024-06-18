@@ -1,1 +1,42 @@
-/* -------------- ---------------- */
+/* -------------- Main ---------------- */
+.commentnav {
+  font-size: 0.9em;
+  text-align: right;
+}
+
+#comments {
+  margin: 1em 0;
+}
+
+.comment {
+  clear: both;
+  margin-bottom: 0.5em;
+}
+
+.comment .left {
+  float: left;
+}
+
+.comment .right {
+  margin-left: 3.5em;
+}
+
+.comment .left .avatar {
+  margin-top: 0.2em;
+}
+
+.comment .topline time {
+  float: right;
+  font-size: 0.8em;
+  color: #777;
+}
+
+.comment .topline .username {
+  font-weight: bold;
+  color: darkblue;
+}
+
+/* -------------- Content ---------------- */
+.comment .content {
+  margin: 0.4em 0.1em;
+}

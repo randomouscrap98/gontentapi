@@ -15,6 +15,35 @@
 
 <main>
 
+{{template "commentnav.tmpl" .}}
+
+<div id="comments">
+  {{range .comments}}
+  <div class="comment" id="comment_{{.Id}}">
+    <div class="left">
+      {{if .CreateUser}}
+      <img src="{{UploadUrl .CreateUser.Avatar}}" class="avatar">
+      {{else}}
+      <img alt="unknown user" class="avatar">
+      {{end}}
+    </div>
+    <div class="right">
+      <div class="topline">
+        {{if .CreateUser}}
+        <span class="username">{{.CreateUser.Username}}</span>
+        {{else}}
+        <span class="username" data-unknownuser>???</span>
+        {{end}}
+        <time>{{.Created}}</time>
+      </div>
+      <pre class="content">{{.Text}}</pre>
+    </div>
+  </div>
+  {{end}}
+</div>
+
+{{template "commentnav.tmpl" .}}
+
 </main>
 
 {{if not .iframe}}

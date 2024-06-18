@@ -1,9 +1,6 @@
 /* --------------- Content -------------- */
 #content {
-  white-space: pre-wrap;
-  word-break: break-word;
   padding: 0.8em;
-  background: #F7F7F7;
 }
 
 .pageinfo {
@@ -30,6 +27,7 @@
 #comments iframe {
   width: 100%;
   min-height: 10em;
+  height: 50vh;
   resize: vertical;
 }
 

@@ -23,7 +23,7 @@
       {{end}}
     </nav>
     {{if .mainpage.Id}}
-    <pre id="content">{{.mainpage.Text}}</pre>
+    <pre class="content" id="content">{{.mainpage.Text}}</pre>
     <dl class="pageinfo">
       <dt>ID:</dt>
       <dd data-id="{{.mainpage.Id}}">{{.mainpage.Id}}</dd>
@@ -56,7 +56,7 @@
   {{if .mainpage.Id}}
   <section id="comments">
     <h3>Comments: {{.numcomments}}</h3>
-    <iframe src="{{.root}}/comments/{{.mainpage.Id}}?iframe=1"></iframe>
+    <iframe src="{{.root}}/comments/{{.mainpage.Hash}}?iframe=1"></iframe>
   </section>
   {{end}}
 

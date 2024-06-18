@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"net/url"
+	"strconv"
 	"time"
 
 	"github.com/go-chi/chi/v5"
@@ -51,7 +53,31 @@ func SetupRoutes(r *chi.Mux, gctx *GonContext) error {
 		}
 		user := gctx.GetCurrentUser(r)
 		data := gctx.GetDefaultData(r, user)
-		_, data["iframe"] = r.Form["iframe"]
+		_, iframe := r.Form["iframe"]
+		rawpage := r.FormValue("page")
+		if rawpage == "" {
+			rawpage = "0"
+		}
+		page, err := strconv.Atoi(rawpage)
+		if handleError(err, w) {
+			return
+		}
+		data["iframe"] = iframe
+		data["page"] = page
+		params := url.Values{}
+		if iframe {
+			params.Add("iframe", "1")
+		}
+		if page > 0 {
+			params.Set("page", fmt.Sprint(page-1))
+			data["newerpageurl"] = "?" + params.Encode()
+		}
+		params.Set("page", fmt.Sprint(page+1))
+		data["olderpageurl"] = "?" + params.Encode()
+		err = gctx.AddCommentData(chi.URLParam(r, "slug"), user, page, data)
+		if handleError(err, w) {
+			return
+		}
 		gctx.RunTemplate("comments.tmpl", w, data)
 	})
 	r.Post("/login", func(w http.ResponseWriter, r *http.Request) {
