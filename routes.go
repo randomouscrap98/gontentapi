@@ -32,7 +32,7 @@ func SetupRoutes(r *chi.Mux, gctx *GonContext) error {
 	// --- Normal routes ---
 	r.Get("/", func(w http.ResponseWriter, r *http.Request) {
 		// Index has nothing for now, just take them to the pages
-		http.Redirect(w, r, "/pages", http.StatusFound)
+		http.Redirect(w, r, gctx.config.RootPath+"/pages", http.StatusFound)
 	})
 	pagesRoute := func(w http.ResponseWriter, r *http.Request) {
 		user := gctx.GetCurrentUser(r)

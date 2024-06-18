@@ -47,6 +47,11 @@ footer {
   text-align: right;
 }
 
+footer > * {
+  margin-left: 0.5em;
+}
+
+/* --------------- Content -------------- */
 .content {
   white-space: pre-wrap;
   word-break: break-word;
