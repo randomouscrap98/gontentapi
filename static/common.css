@@ -11,6 +11,14 @@ header {
   padding: 0.2em;
 }
 
+header form {
+  display: inline-block;
+}
+
+header a:visited, header a:link {
+  color: #70d6ff; /*#ff70d2;*/
+}
+
 header form > * {
   vertical-align: middle;
 }

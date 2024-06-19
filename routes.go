@@ -61,8 +61,7 @@ func SetupRoutes(r *chi.Mux, gctx *GonContext) error {
 	r.Get("/pages", pagesRoute)
 	r.Get("/pages/{slug}", pagesRoute)
 	r.Get("/comments/{slug}", func(w http.ResponseWriter, r *http.Request) {
-		err := r.ParseForm()
-		if handleError(err, w) {
+		if handleError(r.ParseForm(), w) {
 			return
 		}
 		user := gctx.GetCurrentUser(r)
@@ -95,6 +94,22 @@ func SetupRoutes(r *chi.Mux, gctx *GonContext) error {
 			data["olderpageurl"] = "?" + params.Encode()
 		}
 		gctx.RunTemplate("comments.tmpl", w, data)
+	})
+	r.Get("/search", func(w http.ResponseWriter, r *http.Request) {
+		if handleError(r.ParseForm(), w) {
+			return
+		}
+		user := gctx.GetCurrentUser(r)
+		data := gctx.GetDefaultData(r, user)
+		var search Search
+		if handleError(gctx.decoder.Decode(&search, r.Form), w) {
+			return
+		}
+		// We now have a search. Add the search data and return the rendered page
+		if handleError(gctx.AddSearchResults(&search, user, data), w) {
+			return
+		}
+		gctx.RunTemplate("search.tmpl", w, data)
 	})
 	r.Post("/login", func(w http.ResponseWriter, r *http.Request) {
 		username := r.FormValue("username")

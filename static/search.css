@@ -1,0 +1,14 @@
+#searchform {
+  display: table;
+  background-color: #F7F7F7;
+  padding: 0.5em 0.3em;
+  border-spacing: 0.5em 0.2em;
+}
+
+#searchform > * {
+  display: table-row;
+}
+
+#searchform > * > * {
+  display: table-cell;
+}

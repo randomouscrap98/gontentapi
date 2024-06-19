@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+
+{{template "commonmeta.tmpl" .}}
+{{template "commonincludes.tmpl" .}}
+<link rel="stylesheet" href="{{.root}}/static/search.css?{{.cachebust}}">
+
+<body>
+
+{{template "header.tmpl" .}}
+
+<main>
+
+<h1>Search</h1>
+
+<form id="searchform">
+  <div>
+    <label for="searchform_search">Search:</label>
+    <input name="search" id="searchform_search" value="{{.search.Search}}">
+  </div>
+  <div>
+    <label for="searchform_user">User{{if .loggedin}} (your uid: {{.user.Id}}){{end}}:</label>
+    <input name="user" id="searchform_user" value="{{.search.User}}">
+  </div>
+  <div>
+    <span></span> <!-- Empty to make table work? -->
+    <input type="submit" value="Search">
+  </div>
+</form>
+
+<div id="results">
+  {{range .results}}
+  {{end}}
+</div>
+
+</main>
+
+{{template "footer.tmpl" .}}
