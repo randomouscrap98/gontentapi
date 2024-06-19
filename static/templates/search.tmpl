@@ -16,13 +16,18 @@
 <h1>Search</h1>
 
 <form id="searchform">
+  <input type="hidden" name="r" value="1">
   <div>
     <label for="searchform_search">Search:</label>
     <input name="search" id="searchform_search" value="{{.search.Search}}">
   </div>
   <div>
-    <label for="searchform_user">User{{if .loggedin}} (your uid: {{.user.Id}}){{end}}:</label>
+    <label for="searchform_user">User{{if .loggedin}} ({{.user.Uid}}){{end}}:</label>
     <input name="user" id="searchform_user" value="{{.search.User}}">
+  </div>
+  <div>
+    <label for="searchform_page">Page:</label>
+    <input name="page" type="number" min="0" id="searchform_page" value="{{.search.Page}}">
   </div>
   <div>
     <span></span> <!-- Empty to make table work? -->
@@ -30,10 +35,16 @@
   </div>
 </form>
 
-<div id="results">
-  {{range .results}}
-  {{end}}
+{{if .results}}
+<div id="resultsinfo">
+  <span id="count">({{.resultstart}} - {{.resultend}}) of {{.resultcount}} results</span>
 </div>
+<ul id="results">
+  {{range .results}}
+  <li>{{template "pagelink.tmpl" .}}</li>
+  {{end}}
+</ul>
+{{end}}
 
 </main>
 

@@ -13,7 +13,12 @@
 
 <main>
 
-  <h1>{{template "contenttitle.tmpl" .mainpage}}</h1>
+  <h1>
+    {{- if eq .mainpage.ContentType 3 -}}
+    <a href="{{UploadUrl .mainpage.Hash}}"><img src="{{ThumbnailUrl .mainpage.Hash}}" alt="{{.mainpage.Hash}}" class="avatar"></a>
+    {{end -}}
+    {{.mainpage.Name}}{{if .mainpage.Private}}<sub>&#x1F512;</sub>{{end -}}
+  </h1>
 
   <article>
     <nav class="breadcrumbs">
@@ -47,9 +52,9 @@
   <section id="subpages">
     <h3>Subpages: {{len .subpages}}</h3>
     <ul>
-    {{range .subpages}}
-    <li>{{template "pagelink.tmpl" .}}</li>
-    {{end}}
+      {{range .subpages}}
+      <li>{{template "pagelink.tmpl" .}}</li>
+      {{end}}
     </ul>
   </section>
 

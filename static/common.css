@@ -11,8 +11,12 @@ header {
   padding: 0.2em;
 }
 
+header > * {
+  margin-right: 0.3em;
+}
+
 header form {
-  display: inline-block;
+  display: inline;
 }
 
 header a:visited, header a:link {
@@ -41,6 +45,10 @@ img.avatar {
 header .avatar, .breadcrumbs .avatar {
   width: 1.2em;
   height: 1.2em;
+}
+
+.pagelink .avatar {
+  margin-right: 0.3em;
 }
 
 a sub, h1 sub {

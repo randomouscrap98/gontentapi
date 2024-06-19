@@ -13,14 +13,68 @@ import (
 type Search struct {
 	Search string  `schema:"search"`
 	User   int64   `schema:"user"`
+	Page   int     `schema:"page"`
 	Types  []int64 `schema:"types"`
+	R      bool    `schema:"r"`
+}
+
+func (search *Search) MakeInitialQuery(fields string, uid int64) contentapi.Query {
+
+	q := contentapi.NewQuery()
+	q.Sql = "SELECT " + fields + " FROM content c WHERE 1"
+	if search.Search != "" {
+		// This should get more complicated later
+		searchAny := "%" + search.Search + "%"
+		q.Sql += " AND (c.name LIKE ? OR EXISTS (SELECT 1 FROM content_keywords WHERE contentId = c.id AND value LIKE ?))"
+		q.AddParams(searchAny, searchAny)
+	}
+	if search.User != 0 {
+		q.Sql += " AND c.createUserId = ?"
+		q.AddParams(search.User)
+	}
+	//q.AddParams(mainpage.Id, contentapi.ContentType_File)
+	q.AndViewable("c.id", uid)
+
+	return q
 }
 
 func (gctx *GonContext) AddSearchResults(search *Search, user *UserSession, data map[string]any) error {
-	// var uid int64
-	// if user != nil {
-	// 	uid = int64(user.Uid)
-	// }
+	if !search.R {
+		return nil
+	}
+
+	var uid int64
+	if user != nil {
+		uid = int64(user.Uid)
+	}
+
+	// Figure out basic count for user info
+	q := search.MakeInitialQuery("COUNT(*)", uid)
+	var count int64
+	err := gctx.contentdb.Get(&count, q.Sql, q.Params...)
+	if err != nil {
+		return err
+	}
+
+	skip := gctx.config.CommentsPerPage * search.Page
+
+	q = search.MakeInitialQuery(contentapi.GetContentFields("c", false), uid)
+	q.Order = "c.id DESC"
+	q.Limit = gctx.config.CommentsPerPage // Sure, why not
+	q.Skip = skip
+	q.Finalize()
+
+	results := make([]contentapi.Content, 0)
+	err = gctx.contentdb.Select(&results, q.Sql, q.Params...)
+
+	if err != nil {
+		return err
+	}
+
+	data["results"] = results
+	data["resultcount"] = count
+	data["resultstart"] = skip + 1
+	data["resultend"] = skip + len(results)
 
 	return nil
 }
