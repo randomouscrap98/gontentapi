@@ -30,14 +30,25 @@
     <input name="page" type="number" min="0" id="searchform_page" value="{{.search.Page}}">
   </div>
   <div>
+    <span>Ignore:</span>
+    <div id="searchform_ignoretypes">
+      {{range $k, $v := .ignoretypes}}
+      <label>
+        <input name="ignoretypes" type="checkbox" value="{{$v.Value}}" {{if $v.Checked}}checked{{end}}>
+        <span>{{$k}}</span>
+      </label>
+      {{end}}
+    </div>
+  </div>
+  <div>
     <span></span> <!-- Empty to make table work? -->
     <input type="submit" value="Search">
   </div>
 </form>
 
-{{if .results}}
+{{if .search}}
 <div id="resultsinfo">
-  <span id="count">({{.resultstart}} - {{.resultend}}) of {{.resultcount}} results</span>
+  <span id="count">{{if .resultcount}}({{.resultstart}} - {{.resultend}}) of {{end}}{{.resultcount}} results</span>
 </div>
 <ul id="results">
   {{range .results}}

@@ -3,6 +3,7 @@
   background-color: #F7F7F7;
   padding: 0.5em 0.3em;
   border-spacing: 0.5em 0.2em;
+  margin-bottom: 1em;
 }
 
 #searchform > * {
@@ -11,4 +12,16 @@
 
 #searchform > * > * {
   display: table-cell;
+}
+
+#searchform_ignoretypes label {
+  display: block;
+}
+
+#searchform input[type="submit"] {
+  width: 100%;
+}
+
+#resultsinfo {
+  color: #444;
 }

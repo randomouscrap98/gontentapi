@@ -11,11 +11,16 @@ import (
 )
 
 type Search struct {
-	Search string  `schema:"search"`
-	User   int64   `schema:"user"`
-	Page   int     `schema:"page"`
-	Types  []int64 `schema:"types"`
-	R      bool    `schema:"r"`
+	Search      string `schema:"search"`
+	User        int64  `schema:"user"`
+	Page        int    `schema:"page"`
+	IgnoreTypes []int  `schema:"ignoretypes"`
+	R           bool   `schema:"r"`
+}
+
+type IgnoreTypeData struct {
+	Value   int
+	Checked bool
 }
 
 func (search *Search) MakeInitialQuery(fields string, uid int64) contentapi.Query {
@@ -25,12 +30,17 @@ func (search *Search) MakeInitialQuery(fields string, uid int64) contentapi.Quer
 	if search.Search != "" {
 		// This should get more complicated later
 		searchAny := "%" + search.Search + "%"
-		q.Sql += " AND (c.name LIKE ? OR EXISTS (SELECT 1 FROM content_keywords WHERE contentId = c.id AND value LIKE ?))"
-		q.AddParams(searchAny, searchAny)
+		q.Sql += " AND (c.name LIKE ? OR c.hash LIKE ? OR EXISTS (SELECT 1 FROM content_keywords WHERE contentId = c.id AND value LIKE ?))"
+		q.AddParams(searchAny, searchAny, searchAny)
 	}
 	if search.User != 0 {
 		q.Sql += " AND c.createUserId = ?"
 		q.AddParams(search.User)
+	}
+	if len(search.IgnoreTypes) > 0 {
+		q.Sql += " AND c.contentType NOT IN ("
+		q.AddQueryParams(utils.UniqueParams(search.IgnoreTypes...)...)
+		q.Sql += ")"
 	}
 	//q.AddParams(mainpage.Id, contentapi.ContentType_File)
 	q.AndViewable("c.id", uid)
@@ -39,6 +49,18 @@ func (search *Search) MakeInitialQuery(fields string, uid int64) contentapi.Quer
 }
 
 func (gctx *GonContext) AddSearchResults(search *Search, user *UserSession, data map[string]any) error {
+	// doing too much here?
+	ignoretypes := make(map[string]IgnoreTypeData)
+	addignoretype := func(name string, value int) {
+		ignoretypes[name] = IgnoreTypeData{Value: value, Checked: slices.Contains(search.IgnoreTypes, value)}
+	}
+	addignoretype("Pages", contentapi.ContentType_Page)
+	addignoretype("Modules", contentapi.ContentType_Module)
+	addignoretype("Files", contentapi.ContentType_File)
+	addignoretype("Userpages", contentapi.ContentType_Userpage)
+
+	data["ignoretypes"] = ignoretypes
+
 	if !search.R {
 		return nil
 	}
@@ -71,10 +93,14 @@ func (gctx *GonContext) AddSearchResults(search *Search, user *UserSession, data
 		return err
 	}
 
+	data["search"] = search
 	data["results"] = results
 	data["resultcount"] = count
 	data["resultstart"] = skip + 1
-	data["resultend"] = skip + len(results)
+
+	if len(results) > 0 {
+		data["resultend"] = skip + len(results)
+	}
 
 	return nil
 }
