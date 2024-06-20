@@ -38,9 +38,10 @@ func (q *Query) AddQueryParams(params ...any) {
 
 // Add the query for viewable. Make sure you already have a where clause
 func (q *Query) AndViewable(cidField string, user int64) {
-	q.Sql += " AND deleted = 0 AND " + cidField +
-		" IN (SELECT contentId FROM content_permissions WHERE read = 1 AND userId IN (?, ?))"
-	q.Params = append(q.Params, 0, user)
+	q.Sql += " AND deleted = 0 AND " + cidField + " IN" +
+		" (SELECT contentId FROM content_permissions WHERE read = 1 AND" +
+		"  (userId IN (0, ?) OR userId IN (SELECT relatedId FROM user_relations WHERE userId = ? AND type = 1)))"
+	q.Params = append(q.Params, user, user)
 }
 
 // Add the query for comment viewable (and is a comment). Make sure you already
