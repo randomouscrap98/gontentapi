@@ -8,7 +8,6 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
-	"strconv"
 	"time"
 
 	_ "image/gif"
@@ -66,32 +65,28 @@ func SetupRoutes(r *chi.Mux, gctx *GonContext) error {
 		}
 		user := gctx.GetCurrentUser(r)
 		data := gctx.GetDefaultData(r, user)
-		_, iframe := r.Form["iframe"]
-		rawpage := r.FormValue("page")
-		if rawpage == "" {
-			rawpage = "0"
+		var search CommentSearch
+		if handleError(gctx.decoder.Decode(&search, r.Form), w) {
+			return
 		}
-		page, err := strconv.Atoi(rawpage)
+		_, iframe := r.Form["iframe"] // Iframe is if it exists at all, not the value
+		comments, err := gctx.AddCommentData(chi.URLParam(r, "slug"), &search, user, data)
 		if handleError(err, w) {
 			return
 		}
-		data["iframe"] = iframe
-		data["page"] = page
-		params := url.Values{}
 		if iframe {
+			// Special iframe system, separate from search (but adjacent/uses same fields)
+			params := url.Values{}
 			params.Add("iframe", "1")
-		}
-		if page > 0 {
-			params.Set("page", fmt.Sprint(page-1))
-			data["newerpageurl"] = "?" + params.Encode()
-		}
-		comments, err := gctx.AddCommentData(chi.URLParam(r, "slug"), user, page, data)
-		if handleError(err, w) {
-			return
-		}
-		if len(comments) == gctx.config.CommentsPerPage {
-			params.Set("page", fmt.Sprint(page+1))
-			data["olderpageurl"] = "?" + params.Encode()
+			if search.Page > 0 {
+				params.Set("page", fmt.Sprint(search.Page-1))
+				data["newerpageurl"] = "?" + params.Encode()
+			}
+			if len(comments) == gctx.config.CommentsPerPage {
+				params.Set("page", fmt.Sprint(search.Page+1))
+				data["olderpageurl"] = "?" + params.Encode()
+			}
+			data["iframe"] = true
 		}
 		gctx.RunTemplate("comments.tmpl", w, data)
 	})

@@ -74,3 +74,30 @@ footer > * {
   padding: 0.5em;
   background: #F7F7F7;
 }
+
+/* --------------- Search -------------- */
+form.search {
+  display: table;
+  background-color: #F7F7F7;
+  padding: 0.5em 0.3em;
+  border-spacing: 0.5em 0.2em;
+  margin-bottom: 1em;
+}
+
+form.search > * {
+  display: table-row;
+}
+
+form.search > * > * {
+  display: table-cell;
+}
+
+/* For some reason, these aren't full width */
+form.search input[type="submit"], form.search input[type="date"]{
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.searchinfo {
+  color: #444;
+}

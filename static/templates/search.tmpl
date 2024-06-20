@@ -15,7 +15,7 @@
 
 <h1>Search</h1>
 
-<form id="searchform">
+<form id="searchform" class="search">
   <input type="hidden" name="r" value="1">
   <div>
     <label for="searchform_search">Search:</label>
@@ -47,7 +47,7 @@
 </form>
 
 {{if .search}}
-<div id="resultsinfo">
+<div id="resultsinfo" class="searchinfo">
   <span id="count">{{if .resultcount}}({{.resultstart}} - {{.resultend}}) of {{end}}{{.resultcount}} results</span>
 </div>
 <ul id="results">

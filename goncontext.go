@@ -29,7 +29,7 @@ import (
 
 const (
 	BusyTimeout = 5000
-	Version     = "0.3.0"
+	Version     = "0.4.0"
 )
 
 type UserSession struct {

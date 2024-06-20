@@ -16,10 +16,42 @@
 <main>
 
 {{if not .iframe}}
-<h1>{{template "pagelink.tmpl" .mainpage}}</h1>
+<h1>{{template "pagelink.tmpl" .mainpage}} (comments)</h1>
+<form id="searchform" class="search">
+  <div>
+    <label for="searchform_search">Search:</label>
+    <input name="search" id="searchform_search" value="{{.search.Search}}">
+  </div>
+  <div>
+    <label for="searchform_start">Start:</label>
+    <input name="start" type="date" id="searchform_start" value="{{.search.Start}}">
+  </div>
+  <div>
+    <label for="searchform_user">User{{if .loggedin}} ({{.user.Uid}}){{end}}:</label>
+    <input name="user" id="searchform_user" value="{{.search.User}}">
+  </div>
+  <div>
+    <label for="searchform_page">Page:</label>
+    <input name="page" type="number" min="0" id="searchform_page" value="{{.search.Page}}">
+  </div>
+  <div>
+    <label for="searchform_oldest">Oldest:</label>
+    <input name="oldest" type="checkbox" id="searchform_oldest" {{if .search.Oldest}}checked{{end}}>
+  </div>
+  <div>
+    <span></span> <!-- Empty to make table work? -->
+    <input type="submit" value="Search">
+  </div>
+</form>
 {{end}}
 
+{{if .iframe}}
 {{template "commentnav.tmpl" .}}
+{{else}}
+<div id="resultsinfo" class="searchinfo">
+  <span id="count">{{if .resultcount}}({{.resultstart}} - {{.resultend}}) of {{end}}{{.resultcount}} results</span>
+</div>
+{{end}}
 
 <div id="comments">
   {{range .comments}}
@@ -46,7 +78,9 @@
   {{end}}
 </div>
 
+{{if .iframe}}
 {{template "commentnav.tmpl" .}}
+{{end}}
 
 </main>
 

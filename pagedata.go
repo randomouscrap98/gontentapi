@@ -48,6 +48,39 @@ func (search *Search) MakeInitialQuery(fields string, uid int64) contentapi.Quer
 	return q
 }
 
+type CommentSearch struct {
+	Search string `schema:"search"`
+	User   int64  `schema:"user"`
+	Page   int    `schema:"page"`
+	Start  string `schema:"start"`
+	Oldest bool   `schema:"oldest"`
+}
+
+func (search *CommentSearch) MakeInitialQuery(fields string, contentId int64, uid int64) contentapi.Query {
+	q := contentapi.NewQuery()
+	q.Sql = "SELECT " + fields + " FROM messages m WHERE m.contentId = ?"
+	q.AddParams(contentId)
+	q.AndCommentViewable("m")
+	if search.Search != "" {
+		// This should get more complicated later
+		searchAny := "%" + search.Search + "%"
+		q.Sql += " AND m.text LIKE ?"
+		//(c.name LIKE ? OR c.hash LIKE ? OR EXISTS (SELECT 1 FROM content_keywords WHERE contentId = c.id AND value LIKE ?))"
+		q.AddParams(searchAny)
+	}
+	if search.User != 0 {
+		q.Sql += " AND m.createUserId = ?"
+		q.AddParams(search.User)
+	}
+	if search.Start != "" {
+		q.Sql += " AND m.createDate > ?"
+		q.AddParams(search.Start)
+	}
+	//q.AddParams(mainpage.Id, contentapi.ContentType_File)
+	q.AndViewable("m.contentId", uid)
+	return q
+}
+
 func (gctx *GonContext) AddSearchResults(search *Search, user *UserSession, data map[string]any) error {
 	// doing too much here?
 	ignoretypes := make(map[string]IgnoreTypeData)
@@ -103,6 +136,100 @@ func (gctx *GonContext) AddSearchResults(search *Search, user *UserSession, data
 	}
 
 	return nil
+}
+
+func (gctx *GonContext) AddCommentData(hash string, search *CommentSearch, user *UserSession, data map[string]any) ([]contentapi.Comment, error) {
+	var uid int64
+	if user != nil {
+		uid = int64(user.Uid)
+	}
+
+	var mainpage contentapi.Content
+
+	// Still need to lookup main page to make sure they have access to it
+	if hash == "" {
+		return nil, &utils.BadRequest{Message: "Must specify a page hash to view comments!"}
+	} else {
+		q := contentapi.NewQuery()
+		q.Sql = "SELECT " + contentapi.GetContentFields("c", false) + " FROM content c WHERE c.hash = ?"
+		q.AddParams(hash)
+		q.AndViewable("c.id", uid)
+		q.Finalize()
+		err := gctx.contentdb.Get(&mainpage, q.Sql, q.Params...)
+
+		if err != nil {
+			if err == sql.ErrNoRows {
+				return nil, &utils.NotFound{Message: fmt.Sprintf("No content with hash %s", hash)}
+			} else {
+				return nil, err
+			}
+		}
+	}
+
+	// Get count of "search" results
+	q := search.MakeInitialQuery("COUNT(*)", mainpage.Id, uid)
+	var count int64
+	err := gctx.contentdb.Get(&count, q.Sql, q.Params...)
+	if err != nil {
+		return nil, err
+	}
+
+	skip := gctx.config.CommentsPerPage * search.Page
+
+	q = search.MakeInitialQuery(contentapi.GetCommentFields("m"), mainpage.Id, uid)
+	q.Order = "m.id"
+	if !search.Oldest {
+		q.Order += " DESC"
+	}
+	q.Limit = gctx.config.CommentsPerPage
+	q.Skip = skip
+	q.Finalize()
+
+	comments := make([]contentapi.Comment, 0)
+	err = gctx.contentdb.Select(&comments, q.Sql, q.Params...)
+
+	if err != nil {
+		return nil, err
+	}
+
+	// Have to pull out only uids (maybe there's a better way, who knows)
+	commentUids := make([]int64, len(comments)+1)
+	for i := range comments {
+		commentUids[i] = comments[i].CreateUserId
+	}
+	commentUids[len(comments)] = mainpage.CreateUserId
+
+	// Need to look up users for each comment
+	users, err := gctx.GetUsers(commentUids...)
+	if err != nil {
+		return nil, err
+	}
+
+	usermap := contentapi.GetMappedUsers(users)
+
+	// Might as well apply the thing here (though I might remove it)
+	if mainpage.ApplyUser(usermap) == nil {
+		log.Printf("WARN: couldn't find user for page %s (%d)", mainpage.Name, mainpage.Id)
+	}
+
+	// Apply user for every comment. It's fine if they don't exist
+	for i := range comments {
+		if comments[i].ApplyUser(usermap) == nil {
+			log.Printf("WARN: couldn't find user for page %s (%d)", mainpage.Name, mainpage.Id)
+		}
+	}
+
+	data["search"] = search
+	data["mainpage"] = &mainpage // Everything expects a pointer
+	data["comments"] = comments
+	data["resultcount"] = count
+	data["resultstart"] = skip + 1
+
+	if len(comments) > 0 {
+		data["resultend"] = skip + len(comments)
+	}
+
+	return comments, nil
 }
 
 // Add all the page data (main page, subpages, etc) for
@@ -216,85 +343,4 @@ func (gctx *GonContext) AddPageData(hash string, user *UserSession, data map[str
 	data["breadcrumbs"] = breadcrumbs
 
 	return nil
-}
-
-func (gctx *GonContext) AddCommentData(hash string, user *UserSession, page int, data map[string]any) ([]contentapi.Comment, error) {
-	var uid int64
-	if user != nil {
-		uid = int64(user.Uid)
-	}
-
-	var mainpage contentapi.Content
-
-	// Still need to lookup main page to make sure they have access to it
-	if hash == "" {
-		return nil, &utils.BadRequest{Message: "Must specify a page hash to view comments!"}
-	} else {
-		q := contentapi.NewQuery()
-		q.Sql = "SELECT " + contentapi.GetContentFields("c", false) + " FROM content c WHERE c.hash = ?"
-		q.AddParams(hash)
-		q.AndViewable("c.id", uid)
-		q.Finalize()
-		err := gctx.contentdb.Get(&mainpage, q.Sql, q.Params...)
-
-		if err != nil {
-			if err == sql.ErrNoRows {
-				return nil, &utils.NotFound{Message: fmt.Sprintf("No content with hash %s", hash)}
-			} else {
-				return nil, err
-			}
-		}
-	}
-
-	// Get comments
-	q := contentapi.NewQuery()
-	q.Sql = "SELECT " + contentapi.GetCommentFields("m") + " FROM messages m WHERE m.contentId = ?"
-	q.AddParams(mainpage.Id)
-	q.AndCommentViewable("m")
-	q.Order = "m.id DESC"
-	q.Limit = gctx.config.CommentsPerPage
-	q.Skip = gctx.config.CommentsPerPage * page
-	q.Finalize()
-
-	//log.Printf("Final comment query: " + q.Sql)
-	//log.Printf(fmt.Sprintf("Final params: %v", q.Params))
-
-	comments := make([]contentapi.Comment, 0)
-	err := gctx.contentdb.Select(&comments, q.Sql, q.Params...)
-
-	if err != nil {
-		return nil, err
-	}
-
-	// Have to pull out only uids (maybe there's a better way, who knows)
-	commentUids := make([]int64, len(comments)+1)
-	for i := range comments {
-		commentUids[i] = comments[i].CreateUserId
-	}
-	commentUids[len(comments)] = mainpage.CreateUserId
-
-	// Need to look up users for each comment
-	users, err := gctx.GetUsers(commentUids...)
-	if err != nil {
-		return nil, err
-	}
-
-	usermap := contentapi.GetMappedUsers(users)
-
-	// Might as well apply the thing here (though I might remove it)
-	if mainpage.ApplyUser(usermap) == nil {
-		log.Printf("WARN: couldn't find user for page %s (%d)", mainpage.Name, mainpage.Id)
-	}
-
-	// Apply user for every comment. It's fine if they don't exist
-	for i := range comments {
-		if comments[i].ApplyUser(usermap) == nil {
-			log.Printf("WARN: couldn't find user for page %s (%d)", mainpage.Name, mainpage.Id)
-		}
-	}
-
-	data["mainpage"] = &mainpage // Everything expects a pointer
-	data["comments"] = comments
-
-	return comments, nil
 }
